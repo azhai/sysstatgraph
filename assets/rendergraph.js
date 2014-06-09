@@ -183,8 +183,8 @@ var rendergraph = function() {
 			var lineminmax = calcgraphlineminmaxvalues(graphlinelist[line]);
 
 			detailel.appendChild(labelel);
-			detailel.appendChild(appendminmax('Min',roundto2decplaces(lineminmax.min)));
-			detailel.appendChild(appendminmax('Max',roundto2decplaces(lineminmax.max)));
+			detailel.appendChild(appendminmax(i18n['Min'],roundto2decplaces(lineminmax.min)));
+			detailel.appendChild(appendminmax(i18n['Max'],roundto2decplaces(lineminmax.max)));
 		}
 
 		// append legend container to graph axis container
@@ -323,7 +323,7 @@ var rendergraph = function() {
 		var mousecanvasdec = (mousex - canvasposx) / canvaswidth;
 
 		// update info box report date at current mouse position
-		updatenodetext(datarowellist[0],'Date:');
+		updatenodetext(datarowellist[0], i18n['Date'] + ':');
 		datarowellist[0].className = 'date';
 
 		// calculate current timestamp

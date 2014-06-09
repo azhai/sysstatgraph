@@ -1,9 +1,9 @@
 <?php
-// buildjsonstructure.php
+// BuildJsonStructure.php
 
 
 
-class buildjsonstructure {
+class BuildJsonStructure {
 
 	private $networkinterfacelist = array();
 	private $timepointlist = array();
@@ -23,7 +23,7 @@ class buildjsonstructure {
 		$json = '{';
 
 		// build time point list
-		$lasttimestamp = $this->getstartofdaytimestamp($this->timepointlist[0]);
+		$lasttimestamp = $this->getStartOfDayTimestamp($this->timepointlist[0]);
 
 		// note we put the date in a YYYY-MM-DD and generate a timestamp on the client side to avoid timezone issues
 		$json .=
@@ -61,8 +61,8 @@ class buildjsonstructure {
 		return $json;
 	}
 
-	// getstartofdaytimestamp() takes a timestamp and returns a timestamp for the start of the day
-	private function getstartofdaytimestamp($inputtimestamp) {
+	// getStartOfDayTimestamp() takes a timestamp and returns a timestamp for the start of the day
+	private function getStartOfDayTimestamp($inputtimestamp) {
 
 		return mktime(
 			0,0,0,

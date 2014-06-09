@@ -1,4 +1,4 @@
-var i18n = {"Date":"Date", "Min":"Min", "Max":"Max"};
+var i18n = {"Date":"时间", "Min":"最小", "Max":"最大"};
 var sysstatgraph = function() {
 
 	function $(id) { return document.getElementById(id); }
@@ -35,7 +35,7 @@ var sysstatgraph = function() {
 
 			if (!sysstatgraph.statdata.starttime) {
 				// no stat data to render - display message and exit
-				$('content').appendChild(buildparagraphtext('Unable to render SYSSTAT graph data - possible configuration error.'));
+				$('content').appendChild(buildparagraphtext('无法输出统计图，可能是配置文件出错！'));
 				return;
 			}
 
@@ -65,7 +65,7 @@ var sysstatgraph = function() {
 				for (var i = 0,j = timepointlist.length;i < j;i++) finishtimestamp += timepointlist[i];
 
 				// insert report period message into DOM
-				$('content').appendChild(buildparagraphtext('Report period: ' + fetchdate(starttimestamp + timepointlist[0]) + ' - ' + fetchdate(finishtimestamp)));
+				$('content').appendChild(buildparagraphtext('统计时段: ' + fetchdate(starttimestamp + timepointlist[0]) + ' - ' + fetchdate(finishtimestamp)));
 			})();
 
 			// pass function reference builddateparts() to rendergraph class
@@ -79,21 +79,21 @@ var sysstatgraph = function() {
 			// graph #1
 			// - tasks created per second
 			var graph1 = new rendergraph.instance(
-				'Tasks created (per second)',graphwidth,graphheight,
+				'任务创建 (每秒)',graphwidth,graphheight,
 				starttimestamp,timepointlist
 			);
 
-			graph1.addgraphline('Tasks per second',getvaluelist('taskspersecond'));
+			graph1.addgraphline('每秒创建',getvaluelist('taskspersecond'));
 			graph1.render();
 
 			// graph #2
 			// - context switches per second
 			var graph2 = new rendergraph.instance(
-				'Context switches (per second)',graphwidth,graphheight,
+				'上下文切换 (每秒)',graphwidth,graphheight,
 				starttimestamp,timepointlist
 			);
 
-			graph2.addgraphline('Context switches per second',getvaluelist('cswitchpersecond'));
+			graph2.addgraphline('每秒切换',getvaluelist('cswitchpersecond'));
 			graph2.render();
 
 			// graph #3
@@ -101,7 +101,7 @@ var sysstatgraph = function() {
 			// - percentage of CPU utilisation that occurred while executing at the system level
 			// - Percentage of time that the CPU or CPUs were idle during which the system had an outstanding disk I/O request
 			var graph3 = new rendergraph.instance(
-				'CPU utilisation',graphwidth,graphheight,
+				'CPU利用率',graphwidth,graphheight,
 				starttimestamp,timepointlist
 			);
 
@@ -115,23 +115,23 @@ var sysstatgraph = function() {
 			// - amount of used memory in kilobytes
 			// - amount of used swap space in kilobytes
 			var graph4 = new rendergraph.instance(
-				'Memory usage (megabytes)',graphwidth,graphheight,
+				'内存占用 (MB)',graphwidth,graphheight,
 				starttimestamp,timepointlist
 			);
 
-			graph4.addgraphline('Memory usage',getvaluelist('mbmemoryused'));
-			graph4.addgraphline('Swap usage',getvaluelist('mbswapused'));
+			graph4.addgraphline('内存',getvaluelist('mbmemoryused'));
+			graph4.addgraphline('交换区',getvaluelist('mbswapused'));
 			graph4.render();
 
 			// graph #5
 			// - number of tasks in the process list
 			var graph5 = new rendergraph.instance(
-				'Running/sleeping task count',graphwidth,graphheight,
+				'任务数量',graphwidth,graphheight,
 				starttimestamp,timepointlist
 			);
 
-			graph5.addgraphline('Running tasks',getvaluelist('taskcountrun'));
-			graph5.addgraphline('Sleeping tasks',getvaluelist('taskcountsleep'));
+			graph5.addgraphline('进行中任务',getvaluelist('taskcountrun'));
+			graph5.addgraphline('休眠任务',getvaluelist('taskcountsleep'));
 			graph5.render();
 
 			// graph #6
@@ -139,13 +139,13 @@ var sysstatgraph = function() {
 			// - system load average for the past 5 minutes
 			// - system load average for the past 15 minutes
 			var graph6 = new rendergraph.instance(
-				'System load averages',graphwidth,graphheight,
+				'系统平均负载',graphwidth,graphheight,
 				starttimestamp,timepointlist
 			);
 
-			graph6.addgraphline('Last minute',getvaluelist('loadavg1'));
-			graph6.addgraphline('Last 5 minutes',getvaluelist('loadavg5'));
-			graph6.addgraphline('Last 15 minutes',getvaluelist('loadavg15'));
+			graph6.addgraphline('最近 1分钟',getvaluelist('loadavg1'));
+			graph6.addgraphline('最近 5分钟',getvaluelist('loadavg5'));
+			graph6.addgraphline('最近15分钟',getvaluelist('loadavg15'));
 			graph6.render();
 
 			// store network interface list and render network graphs
@@ -158,24 +158,24 @@ var sysstatgraph = function() {
 				// - total number of packets received per second
 				// - total number of packets transmitted per second
 				var networkpacketgraph = new rendergraph.instance(
-					'Network packets (per second) - [' + networkinterfacename + ']',graphwidth,graphheight,
+					'网络包 (每秒) - [' + networkinterfacename + ']',graphwidth,graphheight,
 					starttimestamp,timepointlist
 				);
 
-				networkpacketgraph.addgraphline('Packets received',getvaluelist('pcktsrecvpersecond-' + networkinterfacename));
-				networkpacketgraph.addgraphline('Packets transmitted',getvaluelist('pcktstrnspersecond-' + networkinterfacename));
+				networkpacketgraph.addgraphline('接收',getvaluelist('pcktsrecvpersecond-' + networkinterfacename));
+				networkpacketgraph.addgraphline('发送',getvaluelist('pcktstrnspersecond-' + networkinterfacename));
 				networkpacketgraph.render();
 
 				// graph #N+1
 				// - total number of kilobytes received per second
 				// - total number of kilobytes transmitted per second
 				var networkdatagraph = new rendergraph.instance(
-					'Network megabytes (per second) - [' + networkinterfacename + ']',graphwidth,graphheight,
+					'网络流量 (MB/s) - [' + networkinterfacename + ']',graphwidth,graphheight,
 					starttimestamp,timepointlist
 				);
 
-				networkdatagraph.addgraphline('Megabytes received',getvaluelist('kbrecvpersecond-' + networkinterfacename));
-				networkdatagraph.addgraphline('Megabytes transmitted',getvaluelist('kbtrnspersecond-' + networkinterfacename));
+				networkdatagraph.addgraphline('接收',getvaluelist('kbrecvpersecond-' + networkinterfacename));
+				networkdatagraph.addgraphline('发送',getvaluelist('kbtrnspersecond-' + networkinterfacename));
 				networkdatagraph.render();
 			}
 
