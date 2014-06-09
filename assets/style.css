@@ -188,3 +188,15 @@ ul {
 	font-weight: bold;
 }
 
+#nav ul {
+    clear: right;
+    padding-bottom: 20px;
+}
+
+#nav li {
+    display: block;
+	position: relative;
+    float: left;
+    margin-right: 30px;
+}
+

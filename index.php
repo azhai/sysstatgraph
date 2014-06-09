@@ -6,25 +6,44 @@ setlocale(LC_ALL, LANGUAGE);
 bindtextdomain('sysstatgraph', './locale');
 bind_textdomain_codeset('sysstatgraph', 'UTF-8');
 textdomain('sysstatgraph');
+$html_lang = sprintf('lang="%s" xml:lang="%s"', LANGUAGE, LANGUAGE);
+$js_ext_lang = (LANGUAGE !== 'en') ? sprintf('%s.js', LANGUAGE) : 'js';
 
 require('library/GenerateStatData.php');
 require('library/ImportStatFileData.php');
 require('library/BuildJsonStructure.php');
 
-$generate_stat_data = new GenerateStatData();
-$generate_stat_data->execute(STAT_DAYS);
-$statdata = '{}';
-if (is_file(JSONSTRUCTUREFILENAME)) {
-    $statdata = file_get_contents(JSONSTRUCTUREFILENAME);
+$tabs = array(
+    0 => _('Realtime'), 1 => _('Yesterday'),
+    3 => _('3 days ago'), 7 => _('A week ago')
+);
+
+$ago = 0;
+if (isset($_REQUEST['ago']) && $ago = intval($_REQUEST['ago'])) {
+    $file = sprintf(JSONSTRUCTUREFILENAME, $ago);
+    $generate_stat_data = new GenerateStatData($ago);
+    $statdata = $generate_stat_data->executeHistory($file);
+    $script = '';
+} else {
+    $url = 'http://';
+    if (isset($_SERVER['PHP_AUTH_USER'])) {
+        $url .= $_SERVER['PHP_AUTH_USER'] . ':' . $_SERVER['PHP_AUTH_PW'] . '@';
+    }
+    $url .= $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
+    $url = str_replace('/index.php', '/', $url) . 'realtime.php';
+    $generate_stat_data = new GenerateStatData();
+    $statdata = $generate_stat_data->executeRealtime($url);
+    $seconds = 60 - time() % 60;
+    $script = 'window.setTimeout(function(){window.location.reload();}, ' . ($seconds * 1000) . ');';
 }
 ?>
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 
-<html xmlns="http://www.w3.org/1999/xhtml" lang="zh" xml:lang="zh">
+<html xmlns="http://www.w3.org/1999/xhtml" <?php echo $html_lang; ?>>
 <head>
 	<title><?php echo _('SysStat Graph'); ?></title>
 	<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-	<script type="text/javascript" src="assets/sysstatgraph.zh.js"></script>
+	<script type="text/javascript" src="assets/sysstatgraph.<?php echo $js_ext_lang; ?>"></script>
 	<script type="text/javascript" src="assets/rendergraph.js"></script>
 	<script type="text/javascript" src="assets/tocbox.js"></script>
 	<link rel="stylesheet" type="text/css" href="assets/style.css" />
@@ -32,7 +51,16 @@ if (is_file(JSONSTRUCTUREFILENAME)) {
 
 <body>
 
-	<h1><?php echo _('SysStat Graph'); ?></h1>
+    <h1><?php echo _('SysStat Graph'); ?></h1>
+    <div id="nav">
+        <ul>
+        <?php foreach ($tabs as $val => $label):
+            $link = ($val === 0) ? './' : '?ago=' . $val;
+            echo ($val === $ago) ? "<li>$label</li>\n" : "<li><a href=\"$link\">$label</a></li>\n";
+        endforeach; ?>
+        </ul>
+        <div style="clear:both"></div>
+    </div>
 
 	<div id="content"></div>
 
@@ -41,6 +69,7 @@ if (is_file(JSONSTRUCTUREFILENAME)) {
 	<script type="text/javascript">
 	sysstatgraph.statdata = <?php echo $statdata; ?>;
 	sysstatgraph.init();
+    <?php echo $script; ?>
 	</script>
 
 </body>

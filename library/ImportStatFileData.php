@@ -47,6 +47,7 @@ class ImportStatFileData {
 	}
 
 	public function importFile($inputfilename) {
+        //die($inputfilename);
 
 		$this->currentfilesection = '';
 		$fp = fopen($inputfilename,'r');
@@ -136,9 +137,11 @@ class ImportStatFileData {
 	}
 
 	private function getFiledateTimestamp($inputfirstline) {
-
-		// convert YYYY-MM-DD to a unix timestamp
-		return (preg_match('/(?P<year>\d{4})-(?P<month>\d{2})-(?P<day>\d{2})/',rtrim($inputfirstline),$match))
+        $inputfirstline = rtrim($inputfirstline);
+		// convert YYYY-MM-DD or MM/DD/YYYY to a unix timestamp
+        $pattern1 = '!(?P<year>\d{4})-(?P<month>\d{2})-(?P<day>\d{2})!';
+        $pattern2 = '!(?P<month>\d{2})/(?P<day>\d{2})/(?P<year>\d{4})!';
+		return (preg_match($pattern1,$inputfirstline,$match) || preg_match($pattern2,$inputfirstline,$match))
 			? mktime(0,0,0,intval($match['month']),intval($match['day']),intval($match['year']))
 			: FALSE;
 	}
