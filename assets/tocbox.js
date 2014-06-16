@@ -93,6 +93,7 @@ var tocbox = function() {
 
 			// get reference to <ul id="toc">
 			toclistel = document.getElementById('toc');
+			//if (!toclistel || !toclistel.length) return;
 
 			// attach event handlers to show/hide side box
 			toclistel.onmouseover = function(e) {

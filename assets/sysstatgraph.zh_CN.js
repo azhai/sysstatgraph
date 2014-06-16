@@ -170,7 +170,7 @@ var sysstatgraph = function() {
 				// - total number of kilobytes received per second
 				// - total number of kilobytes transmitted per second
 				var networkdatagraph = new rendergraph.instance(
-					'网络流量 (MB/s) - [' + networkinterfacename + ']',graphwidth,graphheight,
+					'网络流量 (Kb/s) - [' + networkinterfacename + ']',graphwidth,graphheight,
 					starttimestamp,timepointlist
 				);
 

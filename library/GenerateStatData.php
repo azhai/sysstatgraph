@@ -1,9 +1,5 @@
 <?php
-
 // GenerateStatData.php
-
-
-
 /*
   Graph #1
   proc/s - Tasks created per second
@@ -38,52 +34,67 @@
   txkB/s - Total number of kilobytes transmitted per second
  */
 
+class GenerateStatData
+{
+    public $host_list = array();
+    public $days_ago = -1;
+    public $full_url = '';
 
-
-class GenerateStatData {
-
-    public $filemask = 'sar??';
-
-    public function __construct($ago = 0)
+    public function __construct(array $host_list, $days_ago = -1)
     {
-        if ($ago > 0) {
-            $this->filemask = self::getSomeDayAgoMask($ago);
-        }
+        $this->host_list = $host_list;
+        $this->days_ago = $days_ago;
     }
 
-    public static function getSomeDayAgoMask($days_ago) {
-        $time = time();
-        $days = array();
-        for ($i = 1; $i <= $days_ago; $i ++) {
-            $days[] = date('d', $time - 86400 * $i);
-        }
-        return 'sar{' . implode(',', $days) . '}';
+    public static function isLocal(array $host_list)
+    {
+        $host_count = count($host_list);
+        return $host_count === 0
+            || $host_count === 1 && $host_list[0] == $_SERVER['SERVER_ADDR'];
     }
 
-    public function executeRealtime($data_url) {
-        $import_stat_file_data = new ImportStatFileData();
-        $import_stat_file_data->importFile($data_url);
-        $build_json_structure = new BuildJsonStructure(
-            $import_stat_file_data->getValidNetworkInterfaceList(),
-            $import_stat_file_data->getTimePointList(),
-            $import_stat_file_data->getStatTypeList()
-        );
-        $result = $build_json_structure->render();
+    public function requireTodayData($ipaddr)
+    {
+        $command = dirname(SYSSTAT_DATA_PATH) . '/bin/sysstat_today.sh';
+        shell_exec("$command $ipaddr");
+        $result = glob(SYSSTAT_DATA_PATH . "/$ipaddr/sat???");
         return $result;
     }
 
-    public function executeHistory($cache_file = false) {
-        // remove any trailing slashes from sysstat data path
-        $sysstatdatapath = rtrim(SYSSTATDATAPATH, '\//');
+    public function getFullURL($with_query = true)
+    {
+        if (empty($this->full_url)) {
+            $url = 'http://';
+            if (isset($_SERVER['PHP_AUTH_USER'])) {
+                $url .= $_SERVER['PHP_AUTH_USER'] . ':' . $_SERVER['PHP_AUTH_PW'] . '@';
+            }
+            $url .= $_SERVER['HTTP_HOST'];
+            $url .= $with_query ? $_SERVER['REQUEST_URI'] : $_SERVER['PHP_SELF'];
+            $url = str_replace('/index.php', '/', $url);
+            $this->full_url = rtrim($url, '/') . '/';
+        }
+        return $this->full_url;
+    }
 
+    public function execute($cache_file = false)
+    {
         // get listing of sar data files on disc, if no files found then no work to do
-        if (!($sardatafilelist = $this->getSarDataFileList($sysstatdatapath))) {
+        if ($this->days_ago === 0) {
+            $data_resource_list = array();
+            if (self::isLocal($this->host_list)) {
+                $data_resource_list[] = $this->getFullURL(false) . 'today.php';
+            } else {
+                foreach ($this->host_list as $host) {
+                    $one_list = $this->requireTodayData($host);
+                    $data_resource_list = array_merge($data_resource_list, $one_list);
+                }
+            }
+        } else if (!($data_resource_list = $this->getSarDataFileList())) {
             // no sar data files found
             return '{}';
         }
-
         if ($cache_file && $report_time = $this->getJsonReportTimestamp($cache_file)) {
-            if ($report_time > $this->getSarDataLatestTimestamp($sardatafilelist)) {
+            if ($report_time > $this->getSarDataLatestTimestamp($data_resource_list)) {
                 // JSON report file is newer than latest sar data file, no work to do
                 return file_get_contents($cache_file);
             }
@@ -91,17 +102,19 @@ class GenerateStatData {
 
         // process sar data files and build new JSON report data file
         $import_stat_file_data = new ImportStatFileData();
-
-        foreach ($sardatafilelist as $file) {
+        foreach ($data_resource_list as $file) {
             // import each sar file from disc
-            if (!is_file($file))
+            if (substr($file, 0, 4) !== 'http' && !is_file($file)) {
                 continue;
+            }
             $import_stat_file_data->importFile($file);
         }
 
         // generate JSON block and write to disc
         $build_json_structure = new BuildJsonStructure(
-                $import_stat_file_data->getValidNetworkInterfaceList(), $import_stat_file_data->getTimePointList(), $import_stat_file_data->getStatTypeList()
+            $import_stat_file_data->getValidNetworkInterfaceList(),
+            $import_stat_file_data->getTimePointList(),
+            $import_stat_file_data->getStatTypeList()
         );
         $result = $build_json_structure->render();
 
@@ -112,41 +125,66 @@ class GenerateStatData {
         return $result;
     }
 
-    private function getSarDataFileList($inputdatapath) {
-
-        // sysstat data path must exist
-        if (!is_dir($inputdatapath))
-            return array();
-
-        // fetch all files in data folder
-        return glob($inputdatapath . '/' . $this->filemask, GLOB_BRACE);
+    public function getFileMask()
+    {
+        if ($this->days_ago < 0) {
+            return 'sar??';
+        } else if ($this->days_ago > 0) {
+            $time = time();
+            $days = array();
+            for ($i = 1; $i <= $this->days_ago; $i ++) {
+                $days[] = date('d', $time - 86400 * $i);
+            }
+            return 'sar{' . implode(',', $days) . '}';
+        } else {
+            return '';
+        }
     }
 
-    private function getSarDataLatestTimestamp(array $inputfilelist) {
+    private function getSarDataFileList()
+    {
+        if (self::isLocal($this->host_list)) {
+            // remove any trailing slashes from sysstat data path
+            $datadir = rtrim(LOCAL_DATA_PATH, '\//');
+            $hostmask = '/';
+        } else {
+            // remove any trailing slashes from sysstat data path
+            $datadir = rtrim(SYSSTAT_DATA_PATH, '\//');
+            $hostmask = '/{' . implode(',', $this->host_list) . '}/';
+        }
+        // sysstat data path must exist
+        if (!is_dir($datadir))
+            return array();
+        // fetch all files in data folder
+        $mask = $datadir . $hostmask . $this->getFileMask();
+        if (strpos($mask, '{') === false) {
+            return glob($mask);
+        } else {
+            return glob($mask, GLOB_BRACE);
+        }
+    }
 
+    private function getSarDataLatestTimestamp(array $inputfilelist)
+    {
         $timestamp = 0;
         foreach ($inputfilelist as $file) {
             $filetimestamp = (is_file($file)) ? filemtime($file) : 0;
             $timestamp = ($filetimestamp > $timestamp) ? $filetimestamp : $timestamp;
         }
-
         // return the timestamp of the latest sar data file found
         return $timestamp;
     }
 
-    private function getJsonReportTimestamp($cache_file) {
-
+    private function getJsonReportTimestamp($cache_file)
+    {
         if (is_file($cache_file)) {
             // if filesize of JSON structure file is zero (empty file) - then return a zero timestamp to allow new JSON data creation
             if (filesize($cache_file) == 0)
                 return 0;
-
             // return file modified timestamp
             return filemtime($cache_file);
         }
-
         // no JSON structure file found
         return 0;
     }
-
 }

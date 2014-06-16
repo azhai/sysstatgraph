@@ -1,8 +1,12 @@
 <?php
 // config.php
 
-define('LANGUAGE','zh_CN');
-define('SYSSTATDATAPATH','/var/log/sa');
-define('JSONSTRUCTUREFILENAME','cache/days-%d.json');
-define('NETWORKINTERFACELIST',serialize(array('eth0')));
-//define('NETWORKINTERFACELIST',serialize(array('lo','eth0')));
+define('VERSION', '0.5.2');
+define('LANGUAGE', 'zh_CN');
+define('LOCAL_DATA_PATH', '/var/log/sa');
+define('SYSSTAT_DATA_PATH', '/home/lamp/sysstat');
+define('JSON_STRUCTURE_FILENAME', 'cache/%s-d%d.json');
+
+define('NETWORK_INTERFACE_LIST', serialize(array('eth0','eth1','ens0p3')));
+define('OTHER_IP_LIST', serialize(array(
+)));

@@ -371,10 +371,9 @@ var rendergraph = function() {
 
 			return {
 				addgraphline: function(title,datalist) {
-
 					graphlinelist[graphlinelist.length] = {
 						title: title,
-						data: datalist
+						data: datalist ? datalist : []
 					};
 				},
 
@@ -385,8 +384,6 @@ var rendergraph = function() {
 
 				render: function() {
 
-					if (!graphlinelist.length) return;
-
 					// increment the graph instance id, used to build the jump to anchor TOC
 					graphinstanceid++;
 
@@ -395,8 +392,12 @@ var rendergraph = function() {
 
 					// calc min/max values across all graph line sets
 					// calc x-axis/y-axis value multiplier -> pixels on canvas, and y-axis start offset
+					var line_data_length = 0;
+					if (graphlinelist.length && graphlinelist[0].data)
+						line_data_length = graphlinelist[0].data.length;
+
 					var graphminmax = calcgraphminmaxvalues(graphlinelist),
-						xvaluemulti = canvaswidth / (graphlinelist[0].data.length - 1),
+						xvaluemulti = canvaswidth / (line_data_length > 1 ? line_data_length - 1 : 1),
 						yvaluemulti = 0,
 						yaxisoffset = canvasheight,
 
