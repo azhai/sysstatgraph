@@ -36,27 +36,27 @@
 
 class GenerateStatData
 {
-    public $host_list = array();
+    public $host_dict = array();
     public $days_ago = -1;
     public $full_url = '';
 
-    public function __construct(array $host_list, $days_ago = -1)
+    public function __construct(array $host_dict, $days_ago = -1)
     {
-        $this->host_list = $host_list;
+        $this->host_dict = $host_dict;
         $this->days_ago = $days_ago;
     }
 
-    public static function isLocal(array $host_list)
+    public static function isLocal(array $host_dict)
     {
-        $host_count = count($host_list);
+        $host_count = count($host_dict);
         return $host_count === 0
-            || $host_count === 1 && $host_list[0] == $_SERVER['SERVER_ADDR'];
+            || $host_count === 1 && key($host_dict) == $_SERVER['SERVER_ADDR'];
     }
 
-    public function requireTodayData($ipaddr)
+    public function requireTodayData($ipaddr, $port=22)
     {
         $command = dirname(SYSSTAT_DATA_PATH) . '/bin/sysstat_today.sh';
-        shell_exec("$command $ipaddr");
+        shell_exec("$command $ipaddr $port");
         $result = glob(SYSSTAT_DATA_PATH . "/$ipaddr/sat???");
         return $result;
     }
@@ -81,11 +81,11 @@ class GenerateStatData
         // get listing of sar data files on disc, if no files found then no work to do
         if ($this->days_ago === 0) {
             $data_resource_list = array();
-            if (self::isLocal($this->host_list)) {
+            if (self::isLocal($this->host_dict)) {
                 $data_resource_list[] = $this->getFullURL(false) . 'today.php';
             } else {
-                foreach ($this->host_list as $host) {
-                    $one_list = $this->requireTodayData($host);
+                foreach ($this->host_dict as $host => $port) {
+                    $one_list = $this->requireTodayData($host, $port);
                     $data_resource_list = array_merge($data_resource_list, $one_list);
                 }
             }
@@ -143,14 +143,14 @@ class GenerateStatData
 
     private function getSarDataFileList()
     {
-        if (self::isLocal($this->host_list)) {
+        if (self::isLocal($this->host_dict)) {
             // remove any trailing slashes from sysstat data path
             $datadir = rtrim(LOCAL_DATA_PATH, '\//');
             $hostmask = '/';
         } else {
             // remove any trailing slashes from sysstat data path
             $datadir = rtrim(SYSSTAT_DATA_PATH, '\//');
-            $hostmask = '/{' . implode(',', $this->host_list) . '}/';
+            $hostmask = '/{' . implode(',', array_keys($this->host_dict)) . '}/';
         }
         // sysstat data path must exist
         if (!is_dir($datadir))

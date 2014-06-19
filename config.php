@@ -8,5 +8,5 @@ define('SYSSTAT_DATA_PATH', '/home/lamp/sysstat');
 define('JSON_STRUCTURE_FILENAME', 'cache/%s-d%d.json');
 
 define('NETWORK_INTERFACE_LIST', serialize(array('eth0','eth1','ens0p3')));
-define('OTHER_IP_LIST', serialize(array(
+define('ALL_HOST_IP_DICT', serialize(array(
 )));

@@ -5,7 +5,6 @@
 php_user='lamp'
 php_pass='changeme'
 ssh_host="192.168.0.100"
-ssh_port=22
 
 #创建用户${php_user}，密码见上面
 if [[ `id -un ${php_user}` != "${php_user}" ]]; then
@@ -24,13 +23,17 @@ cat > /home/${php_user}/bin/sysstat_daily.sh <<EOD
 #!/bin/bash
 #每天午夜同步当天的监控数据
 
-remotes=("192.168.0.201" "192.168.0.202" "192.168.0.203")
-ssh_port=22
-workdir=/home/${php_user}/sysstat/\${remote}
+declare -A remotes=(
+    ["192.168.0.201"]=22
+    ["192.168.0.202"]=22
+    ["192.168.0.203"]=22
+)
 day=\`date +%d\`
-for remote in \${remotes[@]}
+for remote in \${!remotes[@]}
 do
-    scp -i /home/${php_user}/.ssh/id_rsa -o StrictHostKeyChecking=no -P \${ssh_port} backup@\${remote}:/var/log/sa/sar\${day} \${workdir}/
+    workdir=/home/${php_user}/sysstat/\${remote}
+    scp -i /home/${php_user}/.ssh/id_rsa -o StrictHostKeyChecking=no \\
+        -P \${remotes[\$remote]} backup@\${remote}:/var/log/sa/sar\${day} \${workdir}/
 done
 EOD
 
@@ -47,7 +50,7 @@ cat > /home/${php_user}/bin/sysstat_today.sh <<EOD
 #用于增量同步一次当天的监控数据
 
 remote=\$1
-ssh_port=22
+ssh_port=\${2:-22}
 workdir=/home/${php_user}/sysstat/\${remote}
 today=\`date +%Y-%m-%d\`
 first=\`head -n 1 \${workdir}/times | tr -d "\n"\`
@@ -67,8 +70,22 @@ chmod +x /home/${php_user}/bin/sysstat_today.sh
 
 
 被监控服务器（除了中央服务器本身）
+arch=`uname -i`
 
+#centos6
+rpm -ivh http://mirrors.sohu.com/fedora-epel/6Server/$arch/epel-release-6-8.noarch.rpm
+rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-6
+yum -y install yum-priorities
 yum install -y sysstat inotify-tools
+#centos5
+#wget https://github.com/sysstat/sysstat/archive/v9.1.7.tar.gz -O sysstat-9.1.7.tar.gz
+#tar xzf sysstat-9.1.7.tar.gz && cd sysstat-9.1.7
+#./configure --prefix=/usr --disable-documentation --disable-stripping --disable-sensors --disable-nls 
+#make && make install
+#/etc/init.d/sysstat restart
+#centos5 i386 install inotify-tools
+#rpm -ivh http://mirrors.hust.edu.cn/epel/5Server/i386/inotify-tools-3.14-1.el5.i386.rpm
+#rpm -ivh http://mirrors.hust.edu.cn/epel/5Server/i386/inotify-tools-devel-3.14-1.el5.i386.rpm
 
 #查看sysstat版本，必须是V9以上
 #sar -V
@@ -77,7 +94,7 @@ yum install -y sysstat inotify-tools
 if [[ `id -un backup` != "backup" ]]; then
     groupadd -f backup
     useradd -g backup -m -s /bin/bash backup
-    mkdir -p /home/backup/bin/  /home/backup/data/
+    mkdir -p /home/backup/bin/  /home/backup/data/ /home/backup/.ssh/
     chown -R backup /home/backup/
 fi
 
@@ -91,9 +108,8 @@ fi
 cat > /home/backup/bin/inotify_sysstat.sh <<EOD
 #!/bin/bash
 #发送上次之后更新的监控数据
+#NOTE: 变量需要写循环里，否则只执行一次取值
 
-weekday=\`date +%w\`
-sawfile=/var/log/sa/saw\${weekday}
 tsfile=/var/log/sa/times
 while inotifywait -e modify \${tsfile}; do
     time=\`date +%H:%M:00\`
@@ -103,6 +119,8 @@ while inotifywait -e modify \${tsfile}; do
     seq=\`expr \$seq + 1\`
     seq=\`printf "%03d" \$seq\`
     export LANG="en_US.UTF-8"
+    weekday=\`date +%w\`
+    sawfile=/var/log/sa/saw\${weekday}
     /usr/bin/sar -A -f \${sawfile} -s \${start} -e \${time} > /var/log/sa/sat\${seq}
     echo "\$time \$seq" >> \${tsfile}
 done
@@ -115,12 +133,15 @@ nohup /home/backup/bin/inotify_sysstat.sh > /dev/null 2>&1 &
 
 
 #每分钟采集一次数据的定时任务
-arch=`uname -i`
 if [[ "$arch" = "x86_64" ]]; then
     lib_dir=/usr/lib64
 else
     lib_dir=/usr/lib
 fi
+
+#在 ${lib_dir}/sa/sa2 最后或 exit 0 之前加入
+sed -i "/rmdir\ \[0-9\]/afind \${DDIR} -name 'saw?' -mmin +1400 -exec rm -f {} \\\\;" ${lib_dir}/sa/sa2
+
 
 cat > ${lib_dir}/sa/sa3 << EOD
 #!/bin/sh

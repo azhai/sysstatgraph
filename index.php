@@ -17,16 +17,17 @@ $day_tabs = array(
     0 => _('Realtime'), 1 => _('Yesterday'),
     3 => _('3 days ago'), 7 => _('A week ago')
 );
-$host_ips = unserialize(OTHER_IP_LIST);
-array_unshift($host_ips, $_SERVER['SERVER_ADDR']);
+$all_host_dict = unserialize(ALL_HOST_PORT_DICT);
 
 $host_list = isset($_REQUEST['host']) ? $_REQUEST['host'] : array();
 if (empty($host_list)) {
     $host_list = array($_SERVER['SERVER_ADDR']);
 }
-$hosts = '';
+$host_dict = array();
 foreach ($host_list as $host) {
-    $hosts .= '&host[]=' . $host;
+    if (isset($all_host_dict[$host])) {
+        $host_dict[$host] = $all_host_dict[$host];
+    }
 }
 
 $ago = isset($_REQUEST['ago']) ? intval($_REQUEST['ago']) : 0;
@@ -36,10 +37,14 @@ if ($ago === 0) {
     $msecs = (60 - time() % 60) * 1000;
     $script = "window.setTimeout(function(){window.location.reload();}, $msecs);";
 } else {
-    $cache_file = sprintf(JSON_STRUCTURE_FILENAME, md5($hosts), $ago);
+    $cache_hash = md5(implode('_', array_keys($host_dict)));
+    $cache_file = sprintf(JSON_STRUCTURE_FILENAME, substr($cache_hash, 20), $ago);
+}
+if ($host_dict) {
+    $host_args = 'host[]=' . implode('&host[]=', array_keys($host_dict));
 }
 
-$generate_stat_data = new GenerateStatData($host_list, $ago);
+$generate_stat_data = new GenerateStatData($host_dict, $ago);
 $statdata = $generate_stat_data->execute($cache_file);
 
 ?>
@@ -61,7 +66,7 @@ $statdata = $generate_stat_data->execute($cache_file);
     <div id="nav">
         <form id="form" method="GET" action="">
         <ul>
-        <?php foreach ($host_ips as $ip):
+        <?php foreach ($all_host_dict as $ip => $port):
             $checked = in_array($ip, $host_list) ? "checked=\"checked\"" : "";
             echo "<li onclick=\"document.getElementById('form').submit()\">\n";
             echo "    <input type=\"radio\" name=\"host[]\" value=\"$ip\" $checked />$ip</li>\n";
@@ -73,7 +78,7 @@ $statdata = $generate_stat_data->execute($cache_file);
             if ($val === $ago):
                 echo "<li>$label</li>\n";
             else:
-                echo "<li><a href=\"./?ago=$val$hosts\">$label</a></li>\n";
+                echo "<li><a href=\"./?ago=$val&$host_args\">$label</a></li>\n";
             endif;
         endforeach; ?>
         </ul>
