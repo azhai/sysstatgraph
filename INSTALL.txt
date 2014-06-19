@@ -118,9 +118,9 @@ while inotifywait -e modify \${tsfile}; do
     seq=\`echo \$last | cut -d ' ' -f 2\`
     seq=\`expr \$seq + 1\`
     seq=\`printf "%03d" \$seq\`
-    export LANG="en_US.UTF-8"
     weekday=\`date +%w\`
     sawfile=/var/log/sa/saw\${weekday}
+    export LANG="en_US.UTF-8"
     /usr/bin/sar -A -f \${sawfile} -s \${start} -e \${time} > /var/log/sa/sat\${seq}
     echo "\$time \$seq" >> \${tsfile}
 done
